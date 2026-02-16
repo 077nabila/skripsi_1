@@ -28,7 +28,7 @@ st.title("PREDIKSI CURAH HUJAN MENGGUNAKAN LSTM")
 # Add a sidebar title
 st.sidebar.title("Main Menu")
 
-menu = st.sidebar.radio("Go to", ["Dataset", "Deteksi Outlier dan Interpolasi Linear", "Normalisasi Data", "Model LSTM", "Prediksi LSTM", "Implementasi"])
+menu = st.sidebar.radio("Go to", ["Dataset", "Interpolasi Linear", "Normalisasi Data", "Model LSTM", "Prediksi LSTM", "Implementasi"])
 
 if 'df' not in st.session_state:
     st.session_state.df = None
@@ -47,25 +47,20 @@ if menu == "Dataset":
     st.session_state.df = df
     st.write("Dataset Curah Hujan : ")
     st.write(df)
-elif menu == "Deteksi Outlier dan Interpolasi Linear":
+elif menu == "Interpolasi Linear":
     df = st.session_state.df
     if df is not None:
-        is_outlier_iqr = (df['RR'] < 0) | (df['RR'] > 100)
-        outliers = is_outlier_iqr
-        df['Outlier'] = outliers
+        df = data[['TAVG', 'RH_AVG', 'RR']]
+
+        df = df.replace('-', np.nan)
+        df = df.apply(pd.to_numeric, errors='coerce')
+        df = df.interpolate(method='linear')
+        df = df.fillna(method='bfill').fillna(method='ffill')
+
         st.session_state.df = df
-        st.write('Dataset yang termasuk outlier:')
-        st.dataframe(df[['RR', 'Outlier']])
+        st.write('Dataset Setelah Interpolasi Linear:')
+        st.dataframe(df[['TAVG', 'RH_AVG', 'RR']])
             
-        # Replace outliers with linear interpolation values
-        data_cleaned = df['RR'].copy()
-        for i, is_outlier in enumerate(outliers):
-            if is_outlier:
-                data_cleaned[i] = (df['RR'].iloc[i-1] + df['RR'].iloc[i+1]) / 2
-        df['interpolasi outlier'] = data_cleaned
-        st.session_state.df = df
-        st.write('Data setelah dilakukan interpolasi :')
-        st.dataframe(df[['RR', 'interpolasi outlier']])
     else:
         st.write('Silahkan memasukkan dataset terlebih dahulu.')
 elif menu == "Normalisasi Data":
@@ -87,16 +82,7 @@ elif menu == "Model LSTM":
     scaled_data = st.session_state.scaled_data
     if df is not None and scaler is not None and scaled_data is not None:
         if st.button('Load Model'):
-            x_train = pd.read_csv('xtrain_splitdata_0.9_epochs_100_lr_0.01_ts_25.csv')
-            y_train = pd.read_csv('ytrain_splitdata_0.9_epochs_100_lr_0.01_ts_25.csv')
-            x_test = pd.read_csv('xtest_splitdata_0.9_epochs_100_lr_0.01_ts_25.csv')
-            y_test = pd.read_csv('ytest_splitdata_0.9_epochs_100_lr_0.01_ts_25.csv')
-            st.session_state.x_train = x_train
-            st.session_state.x_test = x_test
-            st.session_state.y_train = y_train
-            st.session_state.y_test = y_test
-    
-            model = load_model('model_splitdata_0.9_epochs_100_lr_0.01_ts_25.h5')
+            model = load_model('model_ts_50_ep_100_Ir_0.01.h5')
             st.session_state.model = model
             st.write("Model telah berhasil di load.")
     else:
@@ -106,7 +92,7 @@ elif menu == "Prediksi LSTM":
         test_predictions = st.session_state.model.predict(st.session_state.x_test[:170])
         # test_predictions_data = st.session_state.scaler.inverse_transform(test_predictions)
         # test_predictions_data = test_predictions_data.values()
-        test_predictions = pd.read_csv('predictions_splitdata_0.9_epochs_100_lr_0.01_ts_25.csv')
+        test_predictions = pd.read_csv('prediksi_ts_50_ep_100_Ir_0.01.csv')
         test_predictions_data = test_predictions.values.flatten()
         st.session_state.test_predictions = test_predictions
         st.write('Hasil Prediksi Data Uji:')
@@ -171,3 +157,4 @@ elif menu == "Implementasi":
         st.pyplot(plt)    
     else:
         st.write('Silahkan melakukan prediksi terlebih dahulu')
+
