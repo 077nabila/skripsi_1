@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-from tensorflow import keras
+from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import load_model
 
 # ===================== UI =====================
@@ -34,7 +33,7 @@ if 'test_predictions' not in st.session_state:
 # ===================== MENU =====================
 if menu == "Dataset":
     st.subheader("Data Understanding")
-    df = pd.read_excel("Dataset_Curah_Hujan.xlsx")
+    df = pd.read_excel("data/dataset_Curah_skripsi.xlsx")
     df["Tanggal"] = pd.to_datetime(df["Tanggal"], format="%d-%m-%Y")
     st.session_state.df = df
     st.dataframe(df, use_container_width=True)
@@ -69,13 +68,13 @@ elif menu == "Normalisasi Data":
 
 elif menu == "Model LSTM":
     if st.button("Load Model"):
-        model = load_model("model_ts_50_ep_100_Ir_0.01.h5")
+        model = load_model("model/model_ts_50_ep_100_Ir_0.01.h5")
         st.session_state.model = model
         st.success("Model LSTM berhasil di-load.")
 
 elif menu == "Prediksi LSTM":
     if st.session_state.model is not None and st.session_state.df is not None:
-        preds = pd.read_csv("prediksi_ts_50_ep_100_Ir_0.01.csv").values.flatten()
+        preds = pd.read_csv("prediksi/prediksi_ts_50_ep_100_Ir_0.01.csv").values.flatten()
         st.session_state.test_predictions = preds
 
         df = st.session_state.df
@@ -93,5 +92,3 @@ elif menu == "Prediksi LSTM":
         st.pyplot(plt)
     else:
         st.warning("Load model & dataset dulu.")
-
-
