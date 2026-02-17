@@ -4,11 +4,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import load_model
 
 # ===================== UI =====================
+st.set_page_config(page_title="Prediksi Curah Hujan LSTM", layout="wide")
 st.title("PREDIKSI CURAH HUJAN MENGGUNAKAN LSTM")
 st.sidebar.title("Main Menu")
 
@@ -35,7 +35,7 @@ if menu == "Dataset":
     df = pd.read_excel("Dataset_Curah_Hujan.xlsx")
     df["Tanggal"] = pd.to_datetime(df["Tanggal"], format="%d-%m-%Y")
     st.session_state.df = df
-    st.dataframe(df)
+    st.dataframe(df, use_container_width=True)
 
 elif menu == "Interpolasi Linear":
     df = st.session_state.df
@@ -46,7 +46,7 @@ elif menu == "Interpolasi Linear":
         df = df.interpolate(method='linear')
         df = df.fillna(method='bfill').fillna(method='ffill')
         st.session_state.df = df
-        st.dataframe(df)
+        st.dataframe(df, use_container_width=True)
     else:
         st.warning("Load dataset dulu.")
 
@@ -61,7 +61,7 @@ elif menu == "Normalisasi Data":
         st.session_state.scaled_data = scaled_data
         st.session_state.df = df
 
-        st.dataframe(df[['RR', 'Normalisasi']])
+        st.dataframe(df[['RR', 'Normalisasi']], use_container_width=True)
     else:
         st.warning("Lakukan interpolasi dulu.")
 
@@ -69,7 +69,25 @@ elif menu == "Model LSTM":
     if st.button("Load Model"):
         model = load_model("model_ts_50_ep_100_Ir_0.01.h5")
         st.session_state.model = model
-        st.success("Model berhasil di-load.")
+        st.success("Model LSTM berhasil di-load.")
 
 elif menu == "Prediksi LSTM":
-    if st.session_state.mode_
+    if st.session_state.model is not None and st.session_state.df is not None:
+        preds = pd.read_csv("prediksi_ts_50_ep_100_Ir_0.01.csv").values.flatten()
+        st.session_state.test_predictions = preds
+
+        df = st.session_state.df
+
+        st.write("Hasil Prediksi:")
+        st.write(preds)
+
+        rmse = np.sqrt(np.mean((df['RR'].iloc[-len(preds):] - preds) ** 2))
+        st.write("RMSE:", rmse)
+
+        plt.figure(figsize=(12, 5))
+        plt.plot(df['Tanggal'].iloc[-len(preds):], df['RR'].iloc[-len(preds):], label='Asli')
+        plt.plot(df['Tanggal'].iloc[-len(preds):], preds, label='Prediksi')
+        plt.legend()
+        st.pyplot(plt)
+    else:
+        st.warning("Load model & dataset dulu.")
