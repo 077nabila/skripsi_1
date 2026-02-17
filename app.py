@@ -94,3 +94,4 @@ elif menu == "Prediksi LSTM":
     else:
         st.warning("Load model & dataset dulu.")
 
+
