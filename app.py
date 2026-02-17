@@ -77,7 +77,7 @@ elif menu == "Normalisasi Data":
 elif menu == "Model LSTM":
     if st.button("Load Model"):
         try:
-            model = load_model("model/model_ts_50_ep_100_Ir_0.01.h5")
+            model = load_model("model_ts_50_ep_100_Ir_0.01.h5")
             st.session_state.model = model
             st.success("Model LSTM berhasil di-load.")
         except Exception as e:
@@ -111,3 +111,4 @@ elif menu == "Prediksi LSTM":
             st.error(f"Gagal prediksi: {e}")
     else:
         st.warning("Load model & dataset dulu.")
+
