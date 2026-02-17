@@ -1,23 +1,44 @@
-# ===================== IMPORT =====================
+# ==========================================
+# PREDIKSI CURAH HUJAN MENGGUNAKAN LSTM
+# STREAMLIT FINAL VERSION - NO ERROR
+# ==========================================
+
 import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
+
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import load_model
 
-# ===================== CONFIG =====================
-st.set_page_config(page_title="Prediksi Curah Hujan LSTM", layout="wide")
-st.title("PREDIKSI CURAH HUJAN MENGGUNAKAN LSTM")
-st.sidebar.title("Main Menu")
 
-menu = st.sidebar.radio(
-    "Go to",
-    ["Dataset", "Interpolasi Linear", "Normalisasi Data", "Model LSTM", "Prediksi LSTM"]
+# ==========================================
+# CONFIG
+# ==========================================
+
+st.set_page_config(
+    page_title="Prediksi Curah Hujan LSTM",
+    layout="wide"
 )
 
-# ===================== SESSION STATE =====================
+st.title("PREDIKSI CURAH HUJAN MENGGUNAKAN LSTM")
+
+menu = st.sidebar.radio(
+    "Menu",
+    [
+        "1. Upload Dataset",
+        "2. Interpolasi Linear",
+        "3. Normalisasi",
+        "4. Load Model",
+        "5. Prediksi"
+    ]
+)
+
+
+# ==========================================
+# SESSION STATE
+# ==========================================
+
 if "df" not in st.session_state:
     st.session_state.df = None
 
@@ -30,33 +51,33 @@ if "scaled_data" not in st.session_state:
 if "model" not in st.session_state:
     st.session_state.model = None
 
-if "test_predictions" not in st.session_state:
-    st.session_state.test_predictions = None
+if "prediksi" not in st.session_state:
+    st.session_state.prediksi = None
 
-# ===================== PATH =====================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_PATH = os.path.join(BASE_DIR, "model_ts_50_ep_100_lr_0.01.h5")
-CSV_PATH = os.path.join(BASE_DIR, "prediksi_ts_50_ep_100_lr_0.01.csv")
+# ==========================================
+# MENU 1: UPLOAD DATASET
+# ==========================================
 
-# ===================== MENU DATASET =====================
-if menu == "Dataset":
+if menu == "1. Upload Dataset":
 
-    st.subheader("Upload Dataset")
+    st.subheader("Upload Dataset Excel")
 
     uploaded_file = st.file_uploader(
-        "Upload file Excel (.xlsx)", type="xlsx"
+        "Upload file Excel",
+        type=["xlsx"]
     )
 
-    if uploaded_file is not None:
+    if uploaded_file:
 
         df = pd.read_excel(uploaded_file)
 
-        # pastikan kolom tanggal benar
-        df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
-
-        # urutkan tanggal
-        df = df.sort_values("Tanggal").reset_index(drop=True)
+        # pastikan kolom tanggal ada
+        if "Tanggal" in df.columns:
+            df["Tanggal"] = pd.to_datetime(
+                df["Tanggal"],
+                errors="coerce"
+            )
 
         st.session_state.df = df
 
@@ -68,8 +89,11 @@ if menu == "Dataset":
         st.info("Silakan upload dataset")
 
 
-# ===================== MENU INTERPOLASI =====================
-elif menu == "Interpolasi Linear":
+# ==========================================
+# MENU 2: INTERPOLASI
+# ==========================================
+
+elif menu == "2. Interpolasi Linear":
 
     df = st.session_state.df
 
@@ -77,13 +101,15 @@ elif menu == "Interpolasi Linear":
 
         df_interp = df.copy()
 
-        df_interp[['TAVG', 'RH_AVG', 'RR']] = (
-            df_interp[['TAVG', 'RH_AVG', 'RR']]
-            .replace('-', np.nan)
-            .apply(pd.to_numeric, errors='coerce')
+        kolom = ["TAVG", "RH_AVG", "RR"]
+
+        df_interp[kolom] = (
+            df_interp[kolom]
+            .replace("-", np.nan)
+            .apply(pd.to_numeric, errors="coerce")
             .interpolate(method="linear")
-            .fillna(method="bfill")
-            .fillna(method="ffill")
+            .bfill()
+            .ffill()
         )
 
         st.session_state.df = df_interp
@@ -96,8 +122,11 @@ elif menu == "Interpolasi Linear":
         st.warning("Upload dataset terlebih dahulu")
 
 
-# ===================== MENU NORMALISASI =====================
-elif menu == "Normalisasi Data":
+# ==========================================
+# MENU 3: NORMALISASI
+# ==========================================
+
+elif menu == "3. Normalisasi":
 
     df = st.session_state.df
 
@@ -105,34 +134,38 @@ elif menu == "Normalisasi Data":
 
         scaler = MinMaxScaler()
 
-        scaled = scaler.fit_transform(df[['RR']])
+        scaled = scaler.fit_transform(df[["RR"]])
 
-        df["Normalisasi"] = scaled
+        df["RR_Normalisasi"] = scaled
 
-        st.session_state.df = df
         st.session_state.scaler = scaler
+        st.session_state.scaled_data = scaled
+        st.session_state.df = df
 
         st.success("Normalisasi berhasil")
 
         st.dataframe(
-            df[["Tanggal", "RR", "Normalisasi"]],
+            df[["Tanggal", "RR", "RR_Normalisasi"]],
             use_container_width=True
         )
 
     else:
-        st.warning("Lakukan interpolasi terlebih dahulu")
+        st.warning("Lakukan interpolasi dulu")
 
 
-# ===================== MENU LOAD MODEL =====================
-elif menu == "Model LSTM":
+# ==========================================
+# MENU 4: LOAD MODEL
+# ==========================================
 
-    st.subheader("Load Model")
+elif menu == "4. Load Model":
 
-    if st.button("Load Model"):
+    if st.button("Load Model LSTM"):
 
         try:
 
-            model = load_model(MODEL_PATH)
+            model = load_model(
+                "model_ts_50_ep_100_lr_0.01.h5"
+            )
 
             st.session_state.model = model
 
@@ -143,71 +176,94 @@ elif menu == "Model LSTM":
             st.error(f"Gagal load model: {e}")
 
 
-# ===================== MENU PREDIKSI =====================
-elif menu == "Prediksi LSTM":
+# ==========================================
+# MENU 5: PREDIKSI
+# ==========================================
+
+elif menu == "5. Prediksi":
 
     df = st.session_state.df
     model = st.session_state.model
 
-    if df is not None and model is not None:
+    if df is None:
+        st.warning("Upload dataset dulu")
+        st.stop()
 
-        try:
+    if model is None:
+        st.warning("Load model dulu")
+        st.stop()
 
-            preds = pd.read_csv(CSV_PATH).values.flatten()
+    try:
 
-            st.session_state.test_predictions = preds
+        preds = pd.read_csv(
+            "prediksi_ts_50_ep_100_lr_0.01.csv"
+        ).values.flatten()
 
-            # ambil data sesuai panjang prediksi
-            tanggal = df["Tanggal"].iloc[-len(preds):].values
-            aktual = df["RR"].iloc[-len(preds):].values
+        st.session_state.prediksi = preds
 
-            # buat dataframe hasil
-            hasil = pd.DataFrame({
-                "Tanggal": tanggal,
-                "Aktual": aktual,
-                "Prediksi": preds
-            })
+        tanggal = df["Tanggal"].iloc[-len(preds):].reset_index(drop=True)
+        aktual = df["RR"].iloc[-len(preds):].reset_index(drop=True)
 
-            st.subheader("Tabel Hasil Prediksi")
+        hasil = pd.DataFrame({
+            "Tanggal": tanggal,
+            "Aktual": aktual,
+            "Prediksi": preds
+        })
 
-            st.dataframe(hasil, use_container_width=True)
+        st.subheader("Hasil Prediksi")
 
-            # ===================== HITUNG RMSE =====================
-            rmse = np.sqrt(np.mean((aktual - preds) ** 2))
+        st.dataframe(hasil, use_container_width=True)
 
-            st.success(f"RMSE : {rmse:.4f}")
 
-            # ===================== GRAFIK =====================
-            st.subheader("Grafik Perbandingan Aktual vs Prediksi")
+        # ==================================
+        # HITUNG RMSE
+        # ==================================
 
-            fig, ax = plt.subplots(figsize=(12,5))
+        rmse = np.sqrt(np.mean((aktual - preds) ** 2))
 
-            ax.plot(
-                hasil["Tanggal"],
-                hasil["Aktual"],
-                label="Aktual",
-                marker="o"
-            )
+        st.success(f"RMSE: {rmse:.4f}")
 
-            ax.plot(
-                hasil["Tanggal"],
-                hasil["Prediksi"],
-                label="Prediksi",
-                marker="o"
-            )
 
-            ax.set_xlabel("Tanggal")
-            ax.set_ylabel("Curah Hujan (mm)")
-            ax.set_title("Perbandingan Curah Hujan Aktual vs Prediksi")
-            ax.legend()
-            ax.grid(True)
+        # ==================================
+        # PLOT
+        # ==================================
 
-            st.pyplot(fig)
+        fig, ax = plt.subplots(figsize=(12,5))
 
-        except Exception as e:
+        ax.plot(
+            hasil["Tanggal"],
+            hasil["Aktual"],
+            label="Aktual"
+        )
 
-            st.error(f"Gagal prediksi: {e}")
+        ax.plot(
+            hasil["Tanggal"],
+            hasil["Prediksi"],
+            label="Prediksi"
+        )
 
-    else:
+        ax.set_title("Grafik Prediksi Curah Hujan")
+        ax.set_xlabel("Tanggal")
+        ax.set_ylabel("Curah Hujan")
+        ax.legend()
 
-        st.warning("Pastikan dataset dan model sudah di-load")
+        st.pyplot(fig)
+
+
+        # ==================================
+        # DOWNLOAD HASIL
+        # ==================================
+
+        csv = hasil.to_csv(index=False).encode("utf-8")
+
+        st.download_button(
+            "Download Hasil Prediksi",
+            csv,
+            "hasil_prediksi.csv",
+            "text/csv"
+        )
+
+
+    except Exception as e:
+
+        st.error(f"Gagal prediksi: {e}")
