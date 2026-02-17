@@ -33,7 +33,7 @@ if 'test_predictions' not in st.session_state:
 # ===================== MENU =====================
 if menu == "Dataset":
     st.subheader("Data Understanding")
-    df = pd.read_excel("data/dataset_skripsi.xlsx")
+    df = pd.read_excel("dataset_skripsi.xlsx")
     df["Tanggal"] = pd.to_datetime(df["Tanggal"], format="%d-%m-%Y")
     st.session_state.df = df
     st.dataframe(df, use_container_width=True)
@@ -92,6 +92,7 @@ elif menu == "Prediksi LSTM":
         st.pyplot(plt)
     else:
         st.warning("Load model & dataset dulu.")
+
 
 
 
