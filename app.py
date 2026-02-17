@@ -55,7 +55,7 @@ for key in [
 
 if menu == "Dataset":
 
-    df = pd.read_excel("Dataset_Curah_Hujan.xlsx")
+    df = pd.read_excel("dataset_skripsi.xlsx")
 
     df["Tanggal"] = pd.to_datetime(df["Tanggal"])
 
@@ -316,3 +316,4 @@ elif menu == "Implementasi":
     ax.plot(tanggal_future, future_inverse)
 
     st.pyplot(fig)
+
