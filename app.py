@@ -86,7 +86,7 @@ elif menu == "Model LSTM":
 elif menu == "Prediksi LSTM":
     if st.session_state.model is not None and st.session_state.df is not None:
         try:
-            preds = pd.read_csv("prediksi/prediksi_ts_50_ep_100_Ir_0.01.csv").values.flatten()
+            preds = pd.read_csv("prediksi_ts_50_ep_100_Ir_0.01.csv").values.flatten()
             st.session_state.test_predictions = preds
 
             df = st.session_state.df
@@ -111,4 +111,5 @@ elif menu == "Prediksi LSTM":
             st.error(f"Gagal prediksi: {e}")
     else:
         st.warning("Load model & dataset dulu.")
+
 
