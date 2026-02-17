@@ -1,10 +1,12 @@
 # app.py
 
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+import seaborn as sns
+
+from tensorflow import keras
 from tensorflow.keras.models import load_model
 
 # ===================== UI =====================
@@ -91,3 +93,4 @@ elif menu == "Prediksi LSTM":
         st.pyplot(plt)
     else:
         st.warning("Load model & dataset dulu.")
+
