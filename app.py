@@ -32,24 +32,32 @@ if 'test_predictions' not in st.session_state:
 
 # ===================== MENU =====================
 if menu == "Dataset":
-    st.subheader("Data Understanding")
-    df = pd.read_excel("dataset_skripsi.xlsx")
-    df["Tanggal"] = pd.to_datetime(df["Tanggal"], format="%d-%m-%Y")
-    st.session_state.df = df
-    st.dataframe(df, use_container_width=True)
+    st.subheader("Upload & Data Understanding")
+
+    # Upload file Excel supaya aman di Streamlit Cloud
+    uploaded_file = st.file_uploader("Upload file Excel (.xlsx)", type="xlsx")
+
+    if uploaded_file:
+        df = pd.read_excel(uploaded_file)
+        # Parse tanggal aman, otomatis deteksi format
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors='coerce')
+        st.session_state.df = df
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.warning("Silakan upload file Excel terlebih dahulu.")
 
 elif menu == "Interpolasi Linear":
     df = st.session_state.df
     if df is not None:
-        df = df[['TAVG', 'RH_AVG', 'RR']].copy()
-        df = df.replace('-', np.nan)
-        df = df.apply(pd.to_numeric, errors='coerce')
-        df = df.interpolate(method='linear')
-        df = df.fillna(method='bfill').fillna(method='ffill')
-        st.session_state.df = df
-        st.dataframe(df, use_container_width=True)
+        df_interp = df[['TAVG', 'RH_AVG', 'RR']].copy()
+        df_interp = df_interp.replace('-', np.nan)
+        df_interp = df_interp.apply(pd.to_numeric, errors='coerce')
+        df_interp = df_interp.interpolate(method='linear')
+        df_interp = df_interp.fillna(method='bfill').fillna(method='ffill')
+        st.session_state.df = df_interp
+        st.dataframe(df_interp, use_container_width=True)
     else:
-        st.warning("Load dataset dulu.")
+        st.warning("Upload dataset dulu.")
 
 elif menu == "Normalisasi Data":
     df = st.session_state.df
@@ -68,31 +76,38 @@ elif menu == "Normalisasi Data":
 
 elif menu == "Model LSTM":
     if st.button("Load Model"):
-        model = load_model("model/model_ts_50_ep_100_Ir_0.01.h5")
-        st.session_state.model = model
-        st.success("Model LSTM berhasil di-load.")
+        try:
+            model = load_model("model/model_ts_50_ep_100_Ir_0.01.h5")
+            st.session_state.model = model
+            st.success("Model LSTM berhasil di-load.")
+        except Exception as e:
+            st.error(f"Gagal load model: {e}")
 
 elif menu == "Prediksi LSTM":
     if st.session_state.model is not None and st.session_state.df is not None:
-        preds = pd.read_csv("prediksi/prediksi_ts_50_ep_100_Ir_0.01.csv").values.flatten()
-        st.session_state.test_predictions = preds
+        try:
+            preds = pd.read_csv("prediksi/prediksi_ts_50_ep_100_Ir_0.01.csv").values.flatten()
+            st.session_state.test_predictions = preds
 
-        df = st.session_state.df
+            df = st.session_state.df
 
-        st.write("Hasil Prediksi:")
-        st.write(preds)
+            st.subheader("Hasil Prediksi")
+            st.write(preds)
 
-        rmse = np.sqrt(np.mean((df['RR'].iloc[-len(preds):] - preds) ** 2))
-        st.write("RMSE:", rmse)
+            # Hitung RMSE
+            rmse = np.sqrt(np.mean((df['RR'].iloc[-len(preds):] - preds) ** 2))
+            st.write("RMSE:", rmse)
 
-        plt.figure(figsize=(12, 5))
-        plt.plot(df['Tanggal'].iloc[-len(preds):], df['RR'].iloc[-len(preds):], label='Asli')
-        plt.plot(df['Tanggal'].iloc[-len(preds):], preds, label='Prediksi')
-        plt.legend()
-        st.pyplot(plt)
+            # Plot hasil prediksi vs asli
+            plt.figure(figsize=(12, 5))
+            plt.plot(df['Tanggal'].iloc[-len(preds):], df['RR'].iloc[-len(preds):], label='Asli')
+            plt.plot(df['Tanggal'].iloc[-len(preds):], preds, label='Prediksi')
+            plt.xlabel("Tanggal")
+            plt.ylabel("Curah Hujan")
+            plt.title("Prediksi Curah Hujan LSTM")
+            plt.legend()
+            st.pyplot(plt)
+        except Exception as e:
+            st.error(f"Gagal prediksi: {e}")
     else:
         st.warning("Load model & dataset dulu.")
-
-
-
-
