@@ -1,160 +1,61 @@
 # app.py
-#import library
 
-import pickle
 import streamlit as st
 import pandas as pd
 import numpy as np
-import keras
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.impute import KNNImputer
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import mean_absolute_percentage_error
 import matplotlib.pyplot as plt
 import seaborn as sns
-import math
 import joblib
-import tensorflow as tf
-from keras.optimizers import Adam
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, Dropout
-from keras.models import load_model
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow import keras
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import Dense, LSTM, Dropout
+from tensorflow.keras.optimizers import Adam
 
 # Set the title of the app
 st.title("PREDIKSI CURAH HUJAN MENGGUNAKAN LSTM")
-
-# Add a sidebar title
 st.sidebar.title("Main Menu")
 
-menu = st.sidebar.radio("Go to", ["Dataset", "Interpolasi Linear", "Normalisasi Data", "Model LSTM", "Prediksi LSTM", "Implementasi"])
+menu = st.sidebar.radio(
+    "Go to",
+    ["Dataset", "Interpolasi Linear", "Normalisasi Data", "Model LSTM", "Prediksi LSTM", "Implementasi"]
+)
 
+# Init session_state
 if 'df' not in st.session_state:
     st.session_state.df = None
-if 'df_imputed' not in st.session_state:
-    st.session_state.df_imputed = None
-# Add different sections based on the selected menu item
-if menu == "Dataset":
-    st.write("""
-    <h5>Data Understanding</h5>
-    <br>
-    """, unsafe_allow_html=True)
+if 'scaler' not in st.session_state:
+    st.session_state.scaler = None
+if 'scaled_data' not in st.session_state:
+    st.session_state.scaled_data = None
+if 'model' not in st.session_state:
+    st.session_state.model = None
+if 'x_test' not in st.session_state:
+    st.session_state.x_test = None
+if 'y_test' not in st.session_state:
+    st.session_state.y_test = None
+if 'test_predictions' not in st.session_state:
+    st.session_state.test_predictions = None
 
-    st.write('Dataset ini berisi data tentang curah hujan. Dataset yang digunakan pada penelitian ini berasal dari website https://dataonline.bmkg.go.id berdasarkan hasil pengamatan Badan Meteorologi, Klimatologi, dan Geofisika Stasiun Meteorologi Maritim Tanjung Perak dari 1 Januari 2019 hingga 31 Agustus 2023.')
-    df = pd.read_excel('Dataset_Curah_Hujan.xlsx')
-    df['Tanggal'] = pd.to_datetime(df['Tanggal'], format='%d-%m-%Y')
+# ===================== MENU =====================
+
+if menu == "Dataset":
+    st.subheader("Data Understanding")
+
+    st.write(
+        "Dataset ini berisi data curah hujan dari BMKG Stasiun Meteorologi Maritim Tanjung Perak "
+        "(1 Jan 2019 – 31 Agt 2023)."
+    )
+
+    df = pd.read_excel("Dataset_Curah_Hujan.xlsx")
+    df["Tanggal"] = pd.to_datetime(df["Tanggal"], format="%d-%m-%Y")
     st.session_state.df = df
-    st.write("Dataset Curah Hujan : ")
-    st.write(df)
+
+    st.write("Dataset Curah Hujan:")
+    st.dataframe(df)
+
 elif menu == "Interpolasi Linear":
     df = st.session_state.df
+
     if df is not None:
-        df = data[['TAVG', 'RH_AVG', 'RR']]
-
-        df = df.replace('-', np.nan)
-        df = df.apply(pd.to_numeric, errors='coerce')
-        df = df.interpolate(method='linear')
-        df = df.fillna(method='bfill').fillna(method='ffill')
-
-        st.session_state.df = df
-        st.write('Dataset Setelah Interpolasi Linear:')
-        st.dataframe(df[['TAVG', 'RH_AVG', 'RR']])
-            
-    else:
-        st.write('Silahkan memasukkan dataset terlebih dahulu.')
-elif menu == "Normalisasi Data":
-    df = st.session_state.df
-    if df is not None:
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        st.session_state.scaler = scaler
-        scaled_data = scaler.fit_transform(df['interpolasi outlier'].values.reshape(-1,1))
-        df['Normalisasi'] = scaled_data
-        st.session_state.df = df
-        st.session_state.scaled_data = scaled_data
-        st.write('Data setelah dilakukan normalisasi :')
-        st.write(df[['interpolasi outlier', 'Normalisasi']])
-    else:
-        st.write('Silahkan melakukan deteksi outlier terlebih dahulu')
-elif menu == "Model LSTM":
-    df = st.session_state.df
-    scaler = st.session_state.scaler
-    scaled_data = st.session_state.scaled_data
-    if df is not None and scaler is not None and scaled_data is not None:
-        if st.button('Load Model'):
-            model = load_model('model_ts_50_ep_100_Ir_0.01.h5')
-            st.session_state.model = model
-            st.write("Model telah berhasil di load.")
-    else:
-        st.write('Silahkan melakukan proses normalisasi data terlebih dahulu.')
-elif menu == "Prediksi LSTM":
-    if st.session_state.model is not None and st.session_state.scaler is not None and st.session_state.scaled_data is not None:
-        test_predictions = st.session_state.model.predict(st.session_state.x_test[:170])
-        # test_predictions_data = st.session_state.scaler.inverse_transform(test_predictions)
-        # test_predictions_data = test_predictions_data.values()
-        test_predictions = pd.read_csv('prediksi_ts_50_ep_100_Ir_0.01.csv')
-        test_predictions_data = test_predictions.values.flatten()
-        st.session_state.test_predictions = test_predictions
-        st.write('Hasil Prediksi Data Uji:')
-        st.write(test_predictions_data)
-        data_asli = st.session_state.df['RR'][1534:].to_numpy()
-        rmse = np.sqrt(np.mean((st.session_state.df['RR'][1534:] - test_predictions_data) ** 2))
-        st.write('RMSE Data Uji')
-        st.write(rmse)
-        plt.figure(figsize=(20, 7))
-        plt.plot(st.session_state.df['Tanggal'][1534:], st.session_state.df['RR'][1534:], color='blue', label='Curah Hujan Asli')
-        plt.plot(st.session_state.df['Tanggal'].iloc[-len(test_predictions):], test_predictions, color='red', label='Prediksi Curah Hujan')
-        plt.title('Prediksi Curah Hujan')
-        plt.xlabel('Tanggal')
-        plt.ylabel('Curah Hujan (mm)')
-        plt.legend()
-        # Menampilkan plot di Streamlit
-        st.pyplot(plt)
-    else:
-        st.write('Silahkan bangun model terlebih dahulu')
-elif menu == "Implementasi":
-    x_test = st.session_state.x_test
-    y_test = st.session_state.y_test
-    model = st.session_state.model
-    scaler = st.session_state.scaler
-    df = st.session_state.df
-    test_predictions = st.session_state.test_predictions
-    if x_test is not None and model is not None and scaler is not None and df is not None and test_predictions is not None and y_test is not None:
-        n = st.selectbox("Pilih prediksi selanjutnya :", [1, 2, 7, 14, 30, 180, 365])
-        future_predictions = []
-        x_last_window = np.array(x_test[:170], dtype=np.float32)
-        xlast_window = np.array(x_last_window[145:], dtype=np.float32).reshape((1, -1, 1))
-        y_test_scaler = st.session_state.scaler.inverse_transform(st.session_state.y_test.values.reshape(-1, 1))
-        for _ in range(n):
-            # Predict the next time step
-            prediction = model.predict(xlast_window)
-            # Append the prediction to the list of future predictions
-            future_predictions.append(prediction[0])
-            
-            # Update the last window by removing the first element and appending the prediction
-            xlast_window = np.append(xlast_window[:, 1:, :], prediction.reshape(1, 1, 1), axis=1)
-            
-        # Convert the list of future predictions to a numpy array
-        future_predictions = np.array(future_predictions)
-        future_predictions = future_predictions.round(2)
-            
-        # Inverse transform predictions to get the original scale
-        future_predictions_denormalisasi = scaler.inverse_transform(future_predictions)
-        future_predictions_denormalisasi = future_predictions_denormalisasi.round(2)
-        future_predictions_df = pd.DataFrame(future_predictions_denormalisasi, columns=['Prediksi'])
-        st.write('Prediksi Selanjutnya : ')
-        st.write(future_predictions_df)
-            
-        # Plotting the predictions
-        plt.figure(figsize=(12, 6))
-        future_dates = pd.date_range(start=df['Tanggal'].iloc[-1], periods=n+1)  # Remove 'closed' parameter
-        future_dates = future_dates[1:]  # Exclude the first date to get the next n days
-        plt.plot(future_dates, future_predictions_denormalisasi, color='red', label='Prediksi 7 Hari Selanjutnya')
-        plt.title('Prediksi Curah Hujan Selanjutnya')
-        plt.xlabel('Tanggal')
-        plt.ylabel('Curah Hujan (mm)')
-        plt.legend()
-        st.pyplot(plt)    
-    else:
-        st.write('Silahkan melakukan prediksi terlebih dahulu')
-
+        df = d
