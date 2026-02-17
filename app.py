@@ -101,7 +101,7 @@ elif menu == "Interpolasi Linear":
         st.warning("Load dataset dulu")
         st.stop()
 
-    fitur = ["RR", "Tn", "Tx"]
+    fitur = ["TAVG", "RH_AVG", "RR"]
 
     df[fitur] = df[fitur].interpolate(method="linear")
 
@@ -329,3 +329,4 @@ elif menu == "Implementasi":
     ax.set_title("Prediksi Curah Hujan Masa Depan")
 
     st.pyplot(fig)
+
